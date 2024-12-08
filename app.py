@@ -3,9 +3,10 @@ from flask_socketio import SocketIO, emit
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField
 from wtforms.validators import DataRequired, Length
+import secrets
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'  # Замените на ваш секретный ключ
+app.secret_key = secrets.token_hex(16)  # Генерация случайного секретного ключа
 socketio = SocketIO(app)
 
 # Определение формы для ввода ника
