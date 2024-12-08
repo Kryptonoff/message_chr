@@ -10,12 +10,12 @@ app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)  # Генерация случайного секретного ключа
 socketio = SocketIO(app)
 
-# Список неярких цветов
+# Список ярких цветов
 colors = [
-    "#6c757d", "#5a6268", "#343a40", "#495057", "#868e96",
-    "#adb5bd", "#ced4da", "#dee2e6", "#e9ecef", "#f8f9fa",
-    "#f1f3f5", "#e2e6ea", "#d3d9db", "#b0b3b8", "#a6a8ab",
-    "#8a8d90", "#7a7d80", "#6c6f72", "#5c5f62", "#4c4f52"
+    "#FF5733", "#FFBD33", "#DBFF33", "#75FF33", "#33FF57",
+    "#33FFBD", "#33DBFF", "#3375FF", "#3357FF", "#5733FF",
+    "#BD33FF", "#FF33DB", "#FF3375", "#FF33B5", "#FF33A1",
+    "#FF6F33", "#FF9F33", "#FFCC33", "#FFEB33", "#FF33A8"
 ]
 
 # Хранение пользователей и сообщений в памяти
@@ -46,19 +46,45 @@ def handle_register(nickname):
     ip_address = request.remote_addr
     
     if ip_address in users:
-        emit('registration_error', {'error': 'Этот IP-адрес уже зарегистрирован с никнеймом: ' + users[ip_address]['nickname']})
+        emit('registration_error', {'error': 'Вы уже зарегистрированы с ником: ' + users[ip_address]['nickname']})
     else:
         # Сохраняем никнейм и случайный цвет пользователя по его IP-адресу
         color = random.choice(colors)
-        users[ip_address] = {'nickname': nickname, 'color': color}
+        print(f"Выбранный цвет для {nickname}: {color}")  # Отладочное сообщение
+        users[ip_address] = {'nickname': nickname, 'color': color, 'nickname_changes': 0}
         save_users()  # Сохраняем пользователей в файл
         emit('registration_success', {'nickname': nickname, 'color': color})
         log_registration(ip_address, nickname)  # Логируем регистрацию
+
+@socketio.on('change_nickname')
+def handle_change_nickname(new_nickname):
+    ip_address = request.remote_addr
+    
+    if ip_address in users:
+        if users[ip_address]['nickname_changes'] < 3:
+            users[ip_address]['nickname'] = new_nickname
+            users[ip_address]['nickname_changes'] += 1
+            save_users()  # Сохраняем пользователей в файл
+            remaining_attempts = 3 - users[ip_address]['nickname_changes']  # Вычисляем оставшиеся попытки
+            emit('nickname_changed', {'nickname': new_nickname, 'remaining_attempts': remaining_attempts})
+        else:
+            emit('registration_error', {'error': 'Вы достигли максимального количества смен ника.'})
+    else:
+        emit('registration_error', {'error': 'Сначала зарегистрируйтесь.'})
 
 def log_registration(ip_address, nickname):
     """Логирование регистрации пользователя."""
     with open('registration_log.txt', 'a', encoding='utf-8') as log_file:
         log_file.write(f"{datetime.now()}: {nickname} зарегистрирован с IP: {ip_address}\n")
+
+@socketio.on('get_current_nickname')
+def handle_get_current_nickname():
+    ip_address = request.remote_addr
+    if ip_address in users:
+        nickname = users[ip_address]['nickname']
+        emit('current_nickname', {'nickname': nickname})
+    else:
+        emit('current_nickname', {'nickname': 'Не установлен'})
 
 @socketio.on('send_message')
 def handle_send_message(data):
@@ -82,5 +108,5 @@ def handle_get_messages():
     emit('all_messages', messages)
 
 if __name__ == '__main__':
-    load_users()  # Загружаем пользователей при старте приложения
-    socketio.run(app, host='62.217.182.254', port=5000, debug=True)
+    load_users()  # Загружаем пользователей при старте
+    socketio.run(app, host='localhost', port=5000, debug=True)
