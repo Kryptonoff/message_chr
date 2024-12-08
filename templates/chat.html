@@ -1,13 +1,12 @@
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Чат - Комната чата</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"></link>
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/emoji-js/3.6.0/emoji.min.js"></script>
     <style>
         .emoji-picker {
             display: none; /* Скрываем панель смайлов по умолчанию */
@@ -29,117 +28,71 @@
 </head>
 <body class="bg-gray-100">
     <div class="container mx-auto p-4">
-        <div class="flex justify-between items-center mb-4">
-            <h1 class="text-3xl font-bold">Чат</h1>
-            <a href="{{ url_for('logout') }}" class="btn btn-danger bg-red-500 text-white px-4 py-2 rounded">Выйти</a>
-        </div>
+        <h1 class="text-3xl font-bold">Чат</h1>
         <div id="messages" class="mb-3 h-80 overflow-y-scroll border border-gray-300 p-4 bg-white rounded shadow break-words"></div>
         
+        <form id="nicknameForm" class="mb-4">
+            <input id="nicknameInput" class="form-control border border-gray-300 p-2 rounded mr-2" placeholder="Введите ваше имя" required>
+            <button class="btn btn-primary bg-blue-500 text-white px-4 py-2 rounded">Зарегистрироваться</button>
+        </form>
+
         <form id="messageForm" class="flex items-center relative">
             <input id="messageInput" class="form-control flex-grow border border-gray-300 p-2 rounded mr-2" placeholder="Введите сообщение" required>
-            <button id="emojiButton" type="button" class="btn btn-secondary bg-gray-300 text-gray-700 px-4 py-2 rounded mr-2">😊</button>
             <button class="btn btn-primary bg-blue-500 text-white px-4 py-2 rounded">Отправить</button>
-
-            <div class="emoji-picker absolute bottom-12 left-0" id="emojiPicker">
-                <span class="emoji" data-emoji=":smile:">😀</span>
-                <span class="emoji" data-emoji=":heart:">❤️</span>
-                <span class="emoji" data-emoji=":thumbsup:">👍</span>
-                <span class="emoji" data-emoji=":laughing:">😆</span>
-                <span class="emoji" data-emoji=":cry:">😢</span>
-                <span class="emoji" data-emoji=":angry:">😠</span>
-                <span class="emoji" data-emoji=":sunglasses:">😎</span>
-                <span class="emoji" data-emoji=":wink:">😉</span>
-            </div>
         </form>
+
+        <div id="error-message" class="text-red-500 mt-2"></div>
     </div>
 
     <script>
         const socket = io();
-        const emoji = new EmojiConvertor();
-        emoji.replace_mode = 'unified';
-        emoji.allow_native = true;
 
-        socket.emit('get_messages');
+        $('#nicknameForm').submit(function(e) {
+            e.preventDefault();
+            const nickname = $('#nicknameInput').val();
+            $('#error-message').text(''); // Сбросить сообщение об ошибке
+            socket.emit('register', nickname);
+            $('#nicknameInput').val('');
+        });
 
         $('#messageForm').submit(function(e) {
             e.preventDefault();
             const message = $('#messageInput').val();
-            socket.emit('send_message', { nickname: '{{ username }}', message: message });
+            socket.emit('send_message', { message: message });
             $('#messageInput').val('');
         });
 
-        $('.emoji').click(function() {
-            const emojiCode = $(this).data('emoji');
-            $('#messageInput').val($('#messageInput').val() + emojiCode);
-            $('#messageInput').focus();
-            $('#emojiPicker').hide();
-        });
-
-        $('#emojiButton').click(function() {
-            $('#emojiPicker').toggle();
-        });
-
-        $(document).click(function(event) {
-            if (!$(event.target).closest('#emojiButton').length && !$(event.target).closest('#emojiPicker').length) {
-                $('#emojiPicker').hide();
-            }
-        });
-
         socket.on('receive_message', function(data) {
-            const messageWithEmojis = emoji.replace_colons(data.message);
-            const isAuthor = data.nickname === '{{ username }}';
-            const deleteButton = isAuthor ? `<button class="btn btn-danger btn-sm delete-message bg-red-500 text-white px-2 py-1 rounded" data-id="${data.id}">Удалить</button>` : '';
-    
-    const messageElement = `
-        <div id="message-${data.id}" class="mb-2 p-2 border-b border-gray-200 break-words">
-            <div class="flex justify-between items-center">
-                <div>
+            const messageElement = `
+                <div class="mb-2 p-2 border-b border-gray-200 break-words">
                     <strong class="font-semibold" style="color: ${data.color};">${data.nickname}</strong>
                     <span class="text-gray-500 text-sm ml-2">${data.timestamp}</span>
-                </div>
-                ${deleteButton}
-            </div>
-            <p class="mt-1 font-medium">${messageWithEmojis}</p>
-        </div>`;
-    $('#messages').append(messageElement);
-    $('#messages').scrollTop($('#messages')[0].scrollHeight);
-});
+                    <p class="mt-1 font-medium">${data.message}</p>
+                </div>`;
+            $('#messages').append(messageElement);
+            $('#messages').scrollTop($('#messages')[0].scrollHeight);
+        });
 
-socket.on('all_messages', function(messages) {
-    $('#messages').empty();
-    messages.forEach(function(msg) {
-        const messageWithEmojis = emoji.replace_colons(msg.message);
-        const isAuthor = msg.nickname === '{{ username }}';
-        const deleteButton = isAuthor ? `<button class="btn btn-danger btn-sm delete-message bg-red-500 text-white px-2 py-1 rounded" data-id="${msg.id}">Удалить</button>` : '';
-
-        const messageElement = `
-            <div id="message-${msg.id}" class="mb-2 p-2 border-b border-gray-200 break-words">
-                <div class="flex justify-between items-center">
-                    <div>
-                        <strong class="font-semibold" style="color: ${data.color};">${msg.nickname}</strong>
+        socket.on('all_messages', function(messages) {
+            $('#messages').empty();
+            messages.forEach(function(msg) {
+                const messageElement = `
+                    <div class="mb-2 p-2 border-b border-gray-200 break-words">
+                        <strong class="font-semibold" style="color: ${msg.color};">${msg.nickname}</strong>
                         <span class="text-gray-500 text-sm ml-2">${msg.timestamp}</span>
-                    </div>
-                    ${deleteButton}
-                </div>
-                <p class="mt-1 font-medium">${messageWithEmojis}</p>
-            </div>`;
-        $('#messages').append(messageElement);
-    });
-    $('#messages').scrollTop($('#messages')[0].scrollHeight);
-});
+                        <p class="mt-1 font-medium">${msg.message}</p>
+                    </div>`;
+                $('#messages').append(messageElement);
+            });
+            $('#messages').scrollTop($('#messages')[0].scrollHeight);
+        });
 
-$(document).on('click', '.delete-message', function() {
-    const messageId = $(this).data('id');
-    socket.emit('delete_message', { id: messageId });
-});
+        socket.on('registration_error', function(data) {
+            $('#error-message').text(data.error); // Отображаем сообщение об ошибке
+        });
 
-socket.on('message_deleted', function(data) {
-    $(`#message-${data.id}`).remove();
-});
-
-socket.on('error', function(data) {
-    alert(data.message);
-});
-</script>
+        // Запросить все сообщения при загрузке страницы
+        socket.emit('get_messages');
+    </script>
 </body>
 </html>
