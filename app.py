@@ -41,7 +41,7 @@ def handle_send_message(data):
     timestamped_message = {
         'nickname': data['nickname'],
         'message': data['message'],
-        'timestamp': datetime.now()
+        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')  # Преобразуем в строку
     }
     messages.append(timestamped_message)  # Сохраняем сообщение
     emit('receive_message', timestamped_message, broadcast=True)  # Отправляем сообщение всем клиентам
@@ -63,4 +63,4 @@ def background_cleanup():
 socketio.start_background_task(background_cleanup)
 
 if __name__ == '__main__':
-    socketio.run(app, host='193.168.46.53', port=5000)  # Укажите нужный IP и порт
+    socketio.run(app, host='localhost', port=5000)  # Укажите нужный IP и порт
