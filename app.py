@@ -14,10 +14,10 @@ app.secret_key = secrets.token_hex(16)
 socketio = SocketIO(app)
 
 # Настройки MySQL
-app.config['MYSQL_HOST'] = 'adamiswq.beget.tech'
-app.config['MYSQL_USER'] = 'adamiswq_chat'
+app.config['MYSQL_HOST'] = '10.16.0.1'
+app.config['MYSQL_USER'] = 'message_chat'
 app.config['MYSQL_PASSWORD'] = 'Admin123123@'
-app.config['MYSQL_DB'] = 'adamiswq_chat'
+app.config['MYSQL_DB'] = 'chat_chr'
 
 # Определение массива цветов
 COLORS = [
