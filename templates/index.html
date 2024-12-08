@@ -1,0 +1,43 @@
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Выбор ника</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"></link>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen p-4">
+    <div class="bg-white shadow-md rounded-lg p-6 w-full max-w-md">
+        <h1 class="text-2xl font-bold mb-4 text-center">Выберите ваш ник</h1>
+        <form method="POST" class="space-y-4">
+            {{ form.hidden_tag() }}
+            <div>
+                <label for="nickname" class="block text-sm font-medium text-gray-700">{{ form.nickname.label }}</label>
+                {{ form.nickname(size=32, class_="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:outline-none focus:ring-2 focus:ring-blue-500") }}
+                {% for error in form.nickname.errors %}
+                    <span class="text-red-500 text-sm">[{{ error }}]</span>
+                {% endfor %}
+            </div>
+            <div>
+                {{ form.submit(class_="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500") }}
+            </div>
+        </form>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="mt-4">
+                {% for category, message in messages %}
+                    <li class="text-sm p-2 rounded-md {{ 'bg-green-100 text-green-700' if category == 'success' else 'bg-red-100 text-red-700' }}">{{ message }}</li>
+                {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+    </div>
+</body>
+</html>
