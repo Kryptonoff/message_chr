@@ -14,7 +14,7 @@ app.secret_key = secrets.token_hex(16)
 socketio = SocketIO(app)
 
 # Настройки MySQL
-app.config['MYSQL_HOST'] = '62.217.182.254'
+app.config['MYSQL_HOST'] = '10.16.0.1'
 app.config['MYSQL_USER'] = 'message_chat'
 app.config['MYSQL_PASSWORD'] = 'Admin123123@'
 app.config['MYSQL_DB'] = 'message_chat'
