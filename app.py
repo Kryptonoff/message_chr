@@ -63,4 +63,4 @@ def background_cleanup():
 socketio.start_background_task(background_cleanup)
 
 if __name__ == '__main__':
-    socketio.run(app, host='localhost', port=5000)  # Укажите нужный IP и порт
+    socketio.run(app, host='193.168.46.53', port=5000)  # Укажите нужный IP и порт
