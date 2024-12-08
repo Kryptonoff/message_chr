@@ -154,4 +154,4 @@ def handle_delete_message(data):
 
 if __name__ == '__main__':
     socketio.run(app, debug=True)
-    socketio.run(app, host='193.168.46.53', port=5000, debug=True)
+    socketio.run(app, host='62.217.182.254', port=5000, debug=True)
