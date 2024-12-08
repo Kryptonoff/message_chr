@@ -35,4 +35,4 @@ def handle_send_message(data):
     emit('receive_message', data, broadcast=True)  # Отправляем сообщение всем подключенным клиентам
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    socketio.run(app, host='193.168.46.53', port=5000)  # Укажите нужный IP и порт
