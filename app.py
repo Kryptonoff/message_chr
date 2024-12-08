@@ -171,5 +171,4 @@ def handle_delete_message(data):
     connection.close()
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
     socketio.run(app, host='62.217.182.254', port=5000, debug=True)
