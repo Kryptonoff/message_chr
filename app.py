@@ -5,9 +5,9 @@ from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired, Length, EqualTo
 import secrets
 from datetime import datetime
-from flask_mysqldb import MySQL
-from werkzeug.security import generate_password_hash, check_password_hash
+import pymysql
 import random
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
@@ -18,11 +18,6 @@ app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
 app.config['MYSQL_PASSWORD'] = ''
 app.config['MYSQL_DB'] = 'chr_chat'
-mysql = MySQL(app)
-
-@app.route('/')
-def home():
-    return redirect(url_for('login'))
 
 # Определение массива цветов
 COLORS = [
@@ -44,16 +39,31 @@ class LoginForm(FlaskForm):
     password = PasswordField('Пароль', validators=[DataRequired()])
     submit = SubmitField('Войти')
 
+def get_db_connection():
+    connection = pymysql.connect(
+        host=app.config['MYSQL_HOST'],
+        user=app.config['MYSQL_USER'],
+        password=app.config['MYSQL_PASSWORD'],
+        database=app.config['MYSQL_DB']
+    )
+    return connection
+
+@app.route('/')
+def home():
+    return redirect(url_for('login'))
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     form = RegistrationForm()
     if form.validate_on_submit():
         username = form.username.data
         password = generate_password_hash(form.password.data)  # Хешируем пароль
-        cur = mysql.connection.cursor()
+        connection = get_db_connection()
+        cur = connection.cursor()
         cur.execute("INSERT INTO users (username, password) VALUES (%s, %s)", (username, password))
-        mysql.connection.commit()
+        connection.commit()
         cur.close()
+        connection.close()
         flash('Вы успешно зарегистрировались!', 'success')
         return redirect(url_for('login'))
     return render_template('register.html', form=form)
@@ -64,10 +74,12 @@ def login():
     if form.validate_on_submit():
         username = form.username.data
         password = form.password.data
-        cur = mysql.connection.cursor()
+        connection = get_db_connection()
+        cur = connection.cursor()
         cur.execute("SELECT * FROM users WHERE username = %s", (username,))
         user = cur.fetchone()
         cur.close()
+        connection.close()
         if user and check_password_hash(user[2], password):  # user[2] - это хеш пароля
             session['username'] = user[1]  # user[1] - это имя пользователя
             flash('Вы успешно вошли!', 'success')
@@ -101,21 +113,25 @@ def handle_send_message(data):
     user_color = session.get('user_color', '#000000')  # Получаем цвет пользователя, если он есть
     
     # Сохраняем сообщение в базе данных
-    cur = mysql.connection.cursor()
-    cur.execute("INSERT INTO messages (nickname, message, timestamp) VALUES (%s, %s, %s)", (nickname, message,    timestamp))
-    mysql.connection.commit()
+    connection = get_db_connection()
+    cur = connection.cursor()
+    cur.execute("INSERT INTO messages (nickname, message, timestamp) VALUES (%s, %s, %s)", (nickname, message, timestamp))
+    connection.commit()
     message_id = cur.lastrowid  # Получаем ID последнего вставленного сообщения
     cur.close()
+    connection.close()
     
     # Отправляем сообщение всем подключенным клиентам
     emit('receive_message', {'id': message_id, 'nickname': nickname, 'message': message, 'timestamp': timestamp, 'color': user_color}, broadcast=True)
 
 @socketio.on('get_messages')
 def handle_get_messages():
-    cur = mysql.connection.cursor()
+    connection = get_db_connection()
+    cur = connection.cursor()
     cur.execute("SELECT id, nickname, message, timestamp FROM messages ORDER BY timestamp ASC")
     messages = cur.fetchall()
     cur.close()
+    connection.close()
     
     # Форматируем сообщения для отправки
     formatted_messages = []
@@ -135,7 +151,8 @@ def handle_delete_message(data):
     message_id = data['id']
     
     # Получаем сообщение из базы данных, чтобы проверить автора
-    cur = mysql.connection.cursor()
+    connection = get_db_connection()
+    cur = connection.cursor()
     cur.execute("SELECT nickname FROM messages WHERE id = %s", (message_id,))
     message = cur.fetchone()
     
@@ -145,12 +162,13 @@ def handle_delete_message(data):
         if nickname == session['username']:
             # Удаляем сообщение из базы данных
             cur.execute("DELETE FROM messages WHERE id = %s", (message_id,))
-            mysql.connection.commit()
+            connection.commit()
             emit('message_deleted', {'id': message_id}, broadcast=True)
         else:
             # Если пользователь не автор, отправляем сообщение об ошибке
             emit('error', {'message': 'Вы не можете удалить это сообщение.'}, room=request.sid)
     cur.close()
+    connection.close()
 
 if __name__ == '__main__':
     socketio.run(app, debug=True)
